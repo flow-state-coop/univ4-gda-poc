@@ -18,8 +18,10 @@ import {UniswapHook} from "../src/UniswapHook.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {UniswapHook} from "../src/UniswapHook.sol";
 import {EasyPosm} from "./utils/EasyPosm.sol";
+import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
 import {PoolManager} from "v4-core/src/PoolManager.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
+import {PoolSwapTest} from "v4-core/src/test/PoolSwapTest.sol";
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {TickMath} from "v4-core/src/libraries/TickMath.sol";
 import {LiquidityAmounts} from "v4-core/test/utils/LiquidityAmounts.sol";
@@ -44,13 +46,16 @@ contract VirtualUnitsTest is Test {
     address usdcWhale = 0x21a31Ee1afC51d94C2eFcCAa2092aD1028285549;
     VirtualUnits virtualUnits;
 
+    uint160 public constant MIN_PRICE_LIMIT = TickMath.MIN_SQRT_PRICE + 1;
+    uint160 public constant MAX_PRICE_LIMIT = TickMath.MAX_SQRT_PRICE - 1;
+
     function setUp() public {
         vm.createSelectFork({blockNumber: 27206486, urlOrAlias: "base"});
-        console.logAddress(address(this));
 
         vm.startPrank(usdcWhale);
 
         usdc.transfer(address(this), 1000000);
+        usdc.transfer(firstAccount, 200);
 
         vm.stopPrank();
 
@@ -89,11 +94,6 @@ contract VirtualUnitsTest is Test {
             1000000,
             1000000
         );
-        (uint256 amount0Expected, uint256 amount1Expected) = LiquidityAmounts.getAmountsForLiquidity(
-            startingPrice, TickMath.getSqrtPriceAtTick(tickLower), TickMath.getSqrtPriceAtTick(tickUpper), 2000000
-        );
-        console.logUint(amount0Expected);
-        console.logUint(amount1Expected);
 
         tokenApprovals(IERC20(token0), IERC20(token1));
 

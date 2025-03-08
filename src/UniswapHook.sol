@@ -5,6 +5,7 @@ import {console} from "forge-std/Test.sol";
 import {BaseHook} from "v4-periphery/src/utils/BaseHook.sol";
 import {Hooks} from "v4-core/src/libraries/Hooks.sol";
 import {IPoolManager} from "v4-core/src/interfaces/IPoolManager.sol";
+import {CurrencyLibrary, Currency} from "v4-core/src/types/Currency.sol";
 import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {BalanceDelta} from "v4-core/src/types/BalanceDelta.sol";
@@ -13,11 +14,7 @@ import {VirtualUnits} from "./VirtualUnits.sol";
 
 contract UniswapHook is BaseHook {
     using PoolIdLibrary for PoolKey;
-
-    // NOTE: ---------------------------------------------------------
-    // state variables should typically be unique to a pool
-    // a single hook contract should be able to service multiple pools
-    // ---------------------------------------------------------------
+    using CurrencyLibrary for Currency;
 
     address virtualUnits;
 
@@ -44,46 +41,58 @@ contract UniswapHook is BaseHook {
         });
     }
 
-    // -----------------------------------------------
-    // NOTE: see IHooks.sol for function documentation
-    // -----------------------------------------------
-
     function _afterSwap(
-        address sender,
+        address,
         PoolKey calldata key,
-        IPoolManager.SwapParams calldata,
-        BalanceDelta,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta delta,
         bytes calldata
     ) internal override returns (bytes4, int128) {
+        bool isToken0 = Currency.unwrap(key.currency0) == virtualUnits;
+
+        if (isToken0 && params.zeroForOne) {
+            uint256 deltaAmount0 = uint256(int256(-delta.amount0()));
+
+            VirtualUnits(virtualUnits).burnUnits(tx.origin, deltaAmount0);
+        } else {
+            uint256 deltaAmount0 = uint256(int256(delta.amount0()));
+
+            VirtualUnits(virtualUnits).mintUnits(tx.origin, deltaAmount0);
+        }
+
         return (BaseHook.afterSwap.selector, 0);
     }
 
     function _afterAddLiquidity(
-        address sender,
+        address,
         PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
+        IPoolManager.ModifyLiquidityParams calldata,
         BalanceDelta delta,
-        BalanceDelta feesAccrued,
-        bytes calldata hookData
+        BalanceDelta,
+        bytes calldata
     ) internal override returns (bytes4, BalanceDelta) {
-        uint256 deltaAmount0 = uint256(int256(-delta.amount0()));
+        bool isToken0 = Currency.unwrap(key.currency0) == virtualUnits;
 
-        VirtualUnits(virtualUnits).burnUnits(tx.origin, deltaAmount0);
+        uint256 deltaAmount = uint256(int256(isToken0 ? -delta.amount0() : -delta.amount1()));
+
+        VirtualUnits(virtualUnits).burnUnits(tx.origin, deltaAmount);
 
         return (BaseHook.afterAddLiquidity.selector, delta);
     }
 
     function _afterRemoveLiquidity(
-        address sender,
+        address,
         PoolKey calldata key,
-        IPoolManager.ModifyLiquidityParams calldata params,
+        IPoolManager.ModifyLiquidityParams calldata,
         BalanceDelta delta,
-        BalanceDelta feesAccrued,
-        bytes calldata hookData
+        BalanceDelta,
+        bytes calldata
     ) internal override returns (bytes4, BalanceDelta) {
-        uint256 deltaAmount0 = uint256(int256(delta.amount0()));
+        bool isToken0 = Currency.unwrap(key.currency0) == virtualUnits;
 
-        VirtualUnits(virtualUnits).mintUnits(tx.origin, deltaAmount0);
+        uint256 deltaAmount = uint256(int256(isToken0 ? delta.amount0() : delta.amount1()));
+
+        VirtualUnits(virtualUnits).mintUnits(tx.origin, deltaAmount);
 
         return (BaseHook.afterRemoveLiquidity.selector, delta);
     }
