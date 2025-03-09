@@ -34,7 +34,7 @@ contract VirtualUnits is ERC20Permit {
     constructor(uint256 _initialSupply, ISuperToken _poolSuperToken) ERC20("GDA", "GDA") ERC20Permit("GDA") {
         _mint(msg.sender, _initialSupply);
         gdaPool = SuperTokenV1Library.createPoolWithCustomERC20Metadata(
-            _poolSuperToken, address(this), PoolConfig(false, true), PoolERC20Metadata("Superfluid Pool", "POOL", 18)
+            _poolSuperToken, address(this), PoolConfig(false, true), PoolERC20Metadata("Superfluid Pool", "GDAy", 18)
         );
         gdaPool.updateMemberUnits(msg.sender, uint128(_initialSupply));
         uint160 flags =

@@ -17,7 +17,7 @@ import {UniswapHook} from "../src/UniswapHook.sol";
 import {IPositionManager} from "v4-periphery/src/interfaces/IPositionManager.sol";
 import {PoolManager} from "v4-core/src/PoolManager.sol";
 
-contract DeployVirtualToken is Script {
+contract DeployVirtualUnits is Script {
     function run() public {
         ISuperfluidPool gdaPool;
         UniswapHook uniswapHook;

@@ -16,7 +16,7 @@ contract UniswapHook is BaseHook {
     using PoolIdLibrary for PoolKey;
     using CurrencyLibrary for Currency;
 
-    address virtualUnits;
+    address public virtualUnits;
 
     constructor(IPoolManager _poolManager, address _virtualUnits) BaseHook(_poolManager) {
         virtualUnits = _virtualUnits;
@@ -54,10 +54,18 @@ contract UniswapHook is BaseHook {
             uint256 deltaAmount0 = uint256(int256(-delta.amount0()));
 
             VirtualUnits(virtualUnits).burnUnits(tx.origin, deltaAmount0);
-        } else {
+        } else if (!isToken0 && params.zeroForOne) {
+            uint256 deltaAmount1 = uint256(int256(delta.amount1()));
+
+            VirtualUnits(virtualUnits).mintUnits(tx.origin, deltaAmount1);
+        } else if (isToken0 && !params.zeroForOne) {
             uint256 deltaAmount0 = uint256(int256(delta.amount0()));
 
             VirtualUnits(virtualUnits).mintUnits(tx.origin, deltaAmount0);
+        } else if (!isToken0 && !params.zeroForOne) {
+            uint256 deltaAmount1 = uint256(int256(-delta.amount1()));
+
+            VirtualUnits(virtualUnits).burnUnits(tx.origin, deltaAmount1);
         }
 
         return (BaseHook.afterSwap.selector, 0);
